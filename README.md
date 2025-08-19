@@ -28,23 +28,23 @@
 
 #### 🍦 数据报表
 
-![数据报表](./public/static/images/report.png)
+![数据报表](./images/report.png)
 
 #### 场景列表
 
-![场景列表](./public/static/images/scene.png)
+![场景列表](./images/scene.png)
 
 #### 运行日志
 
-![运行日志](./public/static/images/logs.png)
+![运行日志](./images/logs.png)
 
 #### 用户管理
 
-![users](./public/static/images/users.png)
+![users](./images/users.png)
 
 #### 项目管理
 
-![projects](./public/static/images/projects.png)
+![projects](./images/projects.png)
 
 </details>
 
