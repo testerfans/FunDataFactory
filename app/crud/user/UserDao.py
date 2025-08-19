@@ -34,6 +34,9 @@ class UserDao(BaseCrud):
         # 如果第一个进来，默认是管理员权限
         if count == 0 :
             user.role = PermissionEnum.admin.value
+        else:
+            # 如果指定了角色，使用指定的角色
+            user.role = body.role.value
         cls.insert_by_model(model_obj=user)
 
 

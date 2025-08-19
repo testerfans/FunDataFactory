@@ -9,10 +9,24 @@ from app.routers.user.request_model.user_in import RegisterUserBody, LoginUserBo
 from app.routers.user.response_model.user_out import UserDto
 from app.commons.utils.jwt_utils import UserToken
 from app.commons.utils.context_utils import REQUEST_CONTEXT
+from app.commons.exceptions.global_exception import BusinessException
 
 
 
 def user_register_logic(body: RegisterUserBody):
+    # 用户自己注册，不需要权限验证
+    UserDao.register_user(body)
+
+def admin_add_user_logic(body: RegisterUserBody):
+    # 管理员添加用户，需要权限验证
+    request = REQUEST_CONTEXT.get()
+    if not request or not hasattr(request, 'scope') or 'user' not in request.scope:
+        raise BusinessException("权限验证失败")
+    
+    user = request.scope['user']
+    if user.get('role') != 2:  # 2是超级管理员
+        raise BusinessException("只有超级管理员可以添加用户")
+    
     UserDao.register_user(body)
 
 def user_login_logic(body: LoginUserBody):

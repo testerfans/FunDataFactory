@@ -22,6 +22,13 @@ router.add_api_route("/register",
                      description="用户注册",
                      response_model=ResponseDto)
 
+router.add_api_route("/admin/add",
+                     user_api.admin_add_user,
+                     methods=["post"],
+                     name="管理员添加用户",
+                     description="管理员添加用户",
+                     response_model=ResponseDto)
+
 
 router.add_api_route("/login",
                      user_api.user_login,

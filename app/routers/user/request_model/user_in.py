@@ -15,6 +15,7 @@ class RegisterUserBody(BaseBody):
     password: str = Field(..., title="密码", description="必传")
     name: str = Field(..., title="姓名", description="必传")
     email: EmailStr = Field(..., title="邮箱号", description="必传")
+    role: PermissionEnum = Field(PermissionEnum.members, title="用户权限", description="非必传，默认为普通用户")
 
     @validator('username', 'password', 'name', 'email')
     def check_field(cls, v):

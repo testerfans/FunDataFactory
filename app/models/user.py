@@ -30,7 +30,7 @@ class DataFactoryUser(Base):
         self.name = form.name
         self.password = form.password
         self.email = form.email
-        self.role = PermissionEnum.members.value # 默认注册进来 普通用户权限
+        self.role = form.role.value if hasattr(form, 'role') and form.role else PermissionEnum.members.value
         self.is_valid = False
         self.create_time = datetime.now()
         self.update_time = datetime.now()

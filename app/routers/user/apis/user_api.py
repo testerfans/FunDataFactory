@@ -11,6 +11,10 @@ def user_register(body: RegisterUserBody):
     user_logic.user_register_logic(body)
     return ResponseDto(msg="注册成功")
 
+def admin_add_user(body: RegisterUserBody):
+    user_logic.admin_add_user_logic(body)
+    return ResponseDto(msg="用户添加成功")
+
 
 def user_login(body: LoginUserBody):
     user = user_logic.user_login_logic(body)
