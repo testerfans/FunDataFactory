@@ -22,9 +22,10 @@ class DataFactoryCases(FunBaseModel):
     param_out = Column(Text, nullable=True, comment="返回参数")
     example_param_in = Column(Text, nullable=True, comment="请求示例")
     example_param_out = Column(Text, nullable=True, comment="返回示例")
+    manual_execution_time = Column(INT, default=0, nullable=False, comment="手动执行时间（秒）")
 
 
-    def __init__(self, project_id, title, name, description, group_name, header, owner, path, param_in, param_out, example_param_in, example_param_out, user, del_flag=0, id=None):
+    def __init__(self, project_id, title, name, description, group_name, header, owner, path, param_in, param_out, example_param_in, example_param_out, manual_execution_time=0, user=None, del_flag=0, id=None):
         super().__init__(create_id=user['id'], create_name=user['username'], del_flag=del_flag, id=id)
         self.project_id = project_id
         self.title = title
@@ -38,3 +39,4 @@ class DataFactoryCases(FunBaseModel):
         self.param_out = param_out
         self.example_param_in = example_param_in
         self.example_param_out = example_param_out
+        self.manual_execution_time = manual_execution_time

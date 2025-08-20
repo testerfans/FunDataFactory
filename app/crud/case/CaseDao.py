@@ -15,11 +15,13 @@ from app.crud.project.ProjectDao import ProjectDao
 from app.crud.project_role.ProjectRoleDao import ProjectRoleDao
 from loguru import logger
 from app.crud import BaseCrud
-from sqlalchemy import or_, asc, and_, func, case as case_, distinct
+from sqlalchemy import or_, asc, and_, func, case as case_, distinct, INT
 from sqlalchemy.orm import aliased
 from app.models import Session
 from app.const.enums import DeleteEnum, ShowEnum
 from datetime import datetime
+from app.models.run_log import DataFactoryRunLog
+import re
 
 class CaseDao(BaseCrud):
 
@@ -28,7 +30,7 @@ class CaseDao(BaseCrud):
 
     @classmethod
     def insert_case(cls, project_id: int , title: str, name: str, description: str, group_name: str, header: str, owner: str, path: str,
-                    param_in: str, param_out: str, example_param_in: str, example_param_out: str, user: dict) -> None:
+                    param_in: str, param_out: str, example_param_in: str, example_param_out: str, manual_execution_time: int = 0, user: dict = None) -> None:
         """
         新增造数场景
         :param project_id: 项目id
@@ -43,6 +45,7 @@ class CaseDao(BaseCrud):
         :param param_out: 返回参数
         :param example_param_in: 请求示例
         :param example_param_out: 返回示例
+        :param manual_execution_time: 手动执行时间（秒）
         :param user: 用户数据
         :return:
         """
@@ -50,12 +53,12 @@ class CaseDao(BaseCrud):
         if ant:
             raise BusinessException("造数场景已存在！！！")
         case = DataFactoryCases(project_id, title, name, description, group_name, header, owner, path, param_in,
-                                 param_out, example_param_in, example_param_out, user)
+                                 param_out, example_param_in, example_param_out, manual_execution_time, user)
         cls.insert_by_model(model_obj = case)
 
     @classmethod
     def update_case(cls, cases_id: int, title: str, name: str, description: str, group_name: str, header: str, owner: str, path: str,
-                    param_in: str, param_out: str, example_param_in: str, example_param_out: str, user: dict) -> None:
+                    param_in: str, param_out: str, example_param_in: str, example_param_out: str, manual_execution_time: int = 0, user: dict = None) -> None:
         """
         更新造数场景
         :param cases_id: 主键id
@@ -70,6 +73,7 @@ class CaseDao(BaseCrud):
         :param param_out: 返回参数
         :param example_param_in: 请求示例
         :param example_param_out: 返回示例
+        :param manual_execution_time: 手动执行时间（秒）
         :param user: 用户数据
         :return:
         """
@@ -88,7 +92,8 @@ class CaseDao(BaseCrud):
             "param_in": param_in,
             "param_out": param_out,
             "example_param_in": example_param_in,
-            "example_param_out": example_param_out
+            "example_param_out": example_param_out,
+            "manual_execution_time": manual_execution_time
         }
         cls.update_by_id(model = update_map, user = user)
 
@@ -228,7 +233,8 @@ class CaseDao(BaseCrud):
             # cases主表关联like表、collection表、summary表
             case = session.query(like_num, collection_num, DataFactoryCases.project_id, DataFactoryCases.id,
                                  DataFactoryCases.title, DataFactoryCases.group_name, DataFactoryCases.description,
-                                 DataFactoryCases.owner, is_like, is_collection, DataFactoryCases.update_time). \
+                                 DataFactoryCases.owner, is_like, is_collection, DataFactoryCases.update_time,
+                                 DataFactoryCases.manual_execution_time). \
                 outerjoin(like_, and_(DataFactoryCases.id == like_.cases_id,
                                      like_.del_flag == 0,
                                      like_.create_id == user['id'])). \
@@ -256,7 +262,7 @@ class CaseDao(BaseCrud):
         with Session() as session:
             case = session.query(DataFactoryCases.owner, DataFactoryCases.group_name, DataFactoryCases.description, DataFactoryCases.create_name, DataFactoryCases.create_time, DataFactoryCases.update_time,
                                  DataFactoryCases.id, DataFactoryCases.path, DataFactoryCases.project_id, DataFactoryCases.name, DataFactoryCases.example_param_in, DataFactoryCases.example_param_out,
-                                 DataFactoryCases.param_in, DataFactoryCases.param_out, DataFactoryCases.title, DataFactoryProject.project_name, DataFactoryProject.git_project, DataFactoryProject.directory).\
+                                 DataFactoryCases.param_in, DataFactoryCases.param_out, DataFactoryCases.title, DataFactoryCases.manual_execution_time, DataFactoryProject.project_name, DataFactoryProject.git_project, DataFactoryProject.directory).\
                 join(DataFactoryCases, DataFactoryCases.project_id == DataFactoryProject.id).\
                 filter(DataFactoryCases.id == id,DataFactoryCases.del_flag == 0).first()
             if user:
@@ -298,6 +304,167 @@ class CaseDao(BaseCrud):
         """统计场景数量"""
         case_sum = cls.get_with_count()
         return case_sum
+
+    @classmethod
+    def get_efficiency_stats(cls, cases_id: int = None, group_name: str = None, project_id: int = None):
+        """
+        获取提效统计信息
+        :param cases_id: 场景ID（可选）
+        :param group_name: 业务线名称（可选）
+        :param project_id: 项目ID（可选）
+        :return: 提效统计信息
+        """
+        with Session() as session:
+            # 构建查询条件
+            filter_list = [DataFactoryCases.del_flag == DeleteEnum.no.value]
+            
+            if cases_id:
+                filter_list.append(DataFactoryCases.id == cases_id)
+            if group_name:
+                filter_list.append(DataFactoryCases.group_name == group_name)
+            if project_id:
+                filter_list.append(DataFactoryCases.project_id == project_id)
+            
+            # 查询场景信息
+            cases_query = session.query(
+                DataFactoryCases.id,
+                DataFactoryCases.title,
+                DataFactoryCases.group_name,
+                DataFactoryCases.manual_execution_time,
+                func.count(DataFactoryRunLog.id).label('total_executions'),
+                func.sum(case_(
+                    (DataFactoryRunLog.run_status == 0, 1),  # 成功执行
+                    else_=0
+                )).label('success_executions'),
+                func.sum(case_(
+                    (DataFactoryRunLog.run_status == 0, DataFactoryRunLog.cost),  # 成功执行的时间
+                    else_=None
+                )).label('total_auto_time')
+            ).outerjoin(
+                DataFactoryRunLog, 
+                DataFactoryCases.id == DataFactoryRunLog.cases_id
+            ).filter(*filter_list).group_by(
+                DataFactoryCases.id,
+                DataFactoryCases.title,
+                DataFactoryCases.group_name,
+                DataFactoryCases.manual_execution_time
+            )
+            
+            cases_stats = cases_query.all()
+            
+            # 计算提效统计（按成功执行次数累计手动时间）
+            total_efficiency_time = 0
+            total_manual_time = 0
+            total_auto_time = 0
+            total_success_count = 0
+            
+            for case_stat in cases_stats:
+                manual_time = case_stat.manual_execution_time or 0
+                success_count = case_stat.success_executions or 0
+                
+                # 处理自动执行时间（字符串格式如 "1.23s"）
+                auto_time_str = case_stat.total_auto_time
+                auto_time = 0
+                if auto_time_str:
+                    # 提取数字部分，去掉"s"后缀
+                    match = re.search(r'(\d+\.?\d*)s?', str(auto_time_str))
+                    if match:
+                        auto_time = float(match.group(1))
+                
+                # 计算提效时间：成功次数 × 手动时间 - 累计自动时间
+                # 确保数据类型一致，将Decimal转换为float
+                manual_time_float = float(manual_time) if manual_time else 0.0
+                success_count_float = float(success_count) if success_count else 0.0
+                efficiency_time = success_count_float * manual_time_float - auto_time
+                
+                # 累计总手动时间：成功次数 × 单次手动时间
+                total_manual_time += (success_count_float * manual_time_float)
+                total_auto_time += auto_time
+                total_success_count += float(success_count) if success_count else 0.0
+                total_efficiency_time += efficiency_time
+            
+            return {
+                'cases_stats': cases_stats,
+                'summary': {
+                    'total_efficiency_time': total_efficiency_time,
+                    'total_manual_time': total_manual_time,
+                    'total_auto_time': total_auto_time,
+                    'total_success_count': total_success_count
+                }
+            }
+
+    @classmethod
+    def get_team_efficiency_stats(cls):
+        """
+        获取团队整体提效统计
+        :return: 团队提效统计信息
+        """
+        with Session() as session:
+            # 按业务线分组统计
+            group_stats = session.query(
+                DataFactoryCases.group_name,
+                # 仅统计成功执行的手动时间：成功次数 × 手动时间
+                func.sum(case_(
+                    (DataFactoryRunLog.run_status == 0, DataFactoryCases.manual_execution_time),
+                    else_=0
+                )).label('total_manual_time'),
+                func.count(DataFactoryRunLog.id).label('total_executions'),
+                func.sum(case_(
+                    (DataFactoryRunLog.run_status == 0, 1),
+                    else_=0
+                )).label('success_executions'),
+                func.sum(case_(
+                    (DataFactoryRunLog.run_status == 0, DataFactoryRunLog.cost),
+                    else_=None
+                )).label('total_auto_time')
+            ).outerjoin(
+                DataFactoryRunLog,
+                DataFactoryCases.id == DataFactoryRunLog.cases_id
+            ).filter(
+                DataFactoryCases.del_flag == DeleteEnum.no.value
+            ).group_by(
+                DataFactoryCases.group_name
+            ).all()
+            
+            # 计算总体统计
+            total_efficiency_time = 0
+            total_manual_time = 0
+            total_auto_time = 0
+            total_success_count = 0
+            
+            for group_stat in group_stats:
+                manual_time = group_stat.total_manual_time or 0
+                success_count = group_stat.success_executions or 0
+                
+                # 处理自动执行时间（字符串格式如 "1.23s"）
+                auto_time_str = group_stat.total_auto_time
+                auto_time = 0
+                if auto_time_str:
+                    # 提取数字部分，去掉"s"后缀
+                    match = re.search(r'(\d+\.?\d*)s?', str(auto_time_str))
+                    if match:
+                        auto_time = float(match.group(1))
+                
+                # 确保数据类型一致，将Decimal转换为float
+                manual_time_float = float(manual_time) if manual_time else 0.0
+                success_count_float = float(success_count) if success_count else 0.0
+                efficiency_time = success_count_float * manual_time_float - auto_time
+                
+                # 确保数据类型一致，将Decimal转换为float
+                total_manual_time += float(manual_time) if manual_time else 0.0
+                total_auto_time += auto_time
+                total_success_count += float(success_count) if success_count else 0.0
+                total_efficiency_time += efficiency_time
+            
+            return {
+                'group_stats': group_stats,
+                'team_summary': {
+                    'total_efficiency_time': total_efficiency_time,
+                    'total_manual_time': total_manual_time,
+                    'total_auto_time': total_auto_time,
+                    'total_success_count': total_success_count
+                }
+            }
 
     @classmethod
     def case_group_summary(cls):

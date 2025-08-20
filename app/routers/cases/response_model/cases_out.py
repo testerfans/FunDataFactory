@@ -21,6 +21,7 @@ class CaseDto(CaseGroupDto):
     param_out: str = None
     example_param_in: str = None
     example_param_out: str = None
+    manual_execution_time: int = 0
 
 class CaseSearchDto(BaseDto):
     id: int
@@ -40,6 +41,7 @@ class CaseListDto(BaseDto):
     collection: bool
     collection_num: int
     update_time: datetime
+    manual_execution_time: int = 0
 
 class CaseDetailDto(CaseDto):
     project_id: int
@@ -76,6 +78,7 @@ class LogListDto(BaseDto):
     call_type: int
     run_status: int
     run_log: str = None
+    cost: str = None
     title: str
     name: str
     group_name: str

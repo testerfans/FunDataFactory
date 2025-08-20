@@ -67,3 +67,13 @@ def out_run(id: str):
 def rpc_run(method: str, data: dict):
     run_data = cases_logic.rpc_run_logic(method, data)
     return ResponseDto(msg="运行成功", data=run_data)
+
+def get_efficiency_stats(cases_id: int = None, group_name: str = None, project_id: int = None):
+    """获取提效统计信息"""
+    stats = cases_logic.get_efficiency_stats_logic(cases_id, group_name, project_id)
+    return ResponseDto(data=stats)
+
+def get_team_efficiency_stats():
+    """获取团队整体提效统计"""
+    stats = cases_logic.get_team_efficiency_stats_logic()
+    return ResponseDto(data=stats)

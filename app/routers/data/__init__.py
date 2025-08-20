@@ -17,3 +17,9 @@ router.add_api_route("/summary",
                      methods=["get"],
                      name="数据汇总",
                      response_model=ResponseDto[DataSummaryDto])
+
+router.add_api_route("/time-saving",
+                     data_api.time_saving_summary,
+                     methods=["get"],
+                     name="时间节省统计",
+                     response_model=ResponseDto)

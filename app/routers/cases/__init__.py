@@ -99,3 +99,15 @@ router.add_api_route("/rpc/{method}",
                      name="rpc调用运行造数场景",
                      response_model = ResponseDto[CasesRunDto]
                      )
+
+router.add_api_route("/efficiency/stats",
+                     cases_api.get_efficiency_stats,
+                     methods=["get"],
+                     name="获取提效统计信息",
+                     response_model=ResponseDto)
+
+router.add_api_route("/efficiency/team",
+                     cases_api.get_team_efficiency_stats,
+                     methods=["get"],
+                     name="获取团队整体提效统计",
+                     response_model=ResponseDto)

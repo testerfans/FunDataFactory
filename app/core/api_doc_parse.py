@@ -61,6 +61,10 @@ class ApiDocParse(object):
         """解析api_data数据"""
         api_data = self.get_api_data()
         case_list = []
+        
+        # 获取手动执行时间映射
+        manual_time_map = self.__parse_manual_time_from_source()
+        
         for case in api_data:
             # body 解析
             params = []
@@ -102,6 +106,9 @@ class ApiDocParse(object):
                         f"解析返回示例json失败, 场景标题: {case['title']}, 方法名: {case['name']}, 场景标题: {case['title']}, 路径: {case['filename']}")
                     example_response = {}
 
+            # 获取手动执行时间
+            manual_time = manual_time_map.get(case['name'], 0)
+
             # 组装case对象信息
             case_dict = dict(
                 title=case['title'],
@@ -114,7 +121,8 @@ class ApiDocParse(object):
                 param_in=self.__tree_params(params),
                 param_out=self.__tree_params(response),
                 example_param_in=json.dumps(example_params, ensure_ascii=False),
-                example_param_out=json.dumps(example_response, ensure_ascii=False)
+                example_param_out=json.dumps(example_response, ensure_ascii=False),
+                manual_execution_time=manual_time  # 从源文件解析的手动执行时间
             )
             case_list.append(case_dict)
         return case_list
@@ -306,9 +314,9 @@ class ApiDocParse(object):
                 # 数据有变化, 同步数据, 以解析的数据为准
                 else:
                     update_list.append(case['title'])
-                    for k in case.keys():
-                        match_data[k] = case[k]
-                    CaseDao.update_case(cases_id=cases_id, user=user, **match_data)
+                    # 确保不传递id字段，避免参数冲突
+                    update_data = {k: v for k, v in case.items() if k != 'id'}
+                    CaseDao.update_case(cases_id=cases_id, user=user, **update_data)
             else:
                 add_list.append(case['title'])
                 CaseDao.insert_case(project_id=project_id, user=user, **case)
@@ -342,3 +350,60 @@ class ApiDocParse(object):
         msg_list = [add_msg, update_msg, delete_msg]
         msg_list = [i for i in msg_list if i != '']
         return ''.join(msg_list) if msg_list else """<p><span style="color: #409eff;font-weight: bold">数据已是最新的了! 无需同步! </span></p>"""
+
+    @staticmethod
+    def __parse_manual_time(case: dict) -> int:
+        """
+        解析手动执行时间
+        :param case: API文档数据
+        :return: 手动执行时间（秒）
+        """
+        try:
+            # 从API文档注释中解析@apiManualTime字段
+            if 'description' in case and case['description']:
+                # 先去除P标签
+                description = ApiDocParse.__remove_ptag(case['description'])
+                # 匹配 @apiManualTime 30 或 @apiManualTime 30 手动执行时间 格式
+                pattern = r'@apiManualTime\s+(\d+)'
+                match = re.search(pattern, description)
+                if match:
+                    return int(match.group(1))
+        except Exception as e:
+            logger.error(f"解析手动执行时间失败: {e}")
+        return 0  # 默认返回0
+
+    def __parse_manual_time_from_source(self) -> dict:
+        """
+        从原始Python文件解析@apiManualTime注释
+        :return: 函数名到手动执行时间的映射
+        """
+        manual_time_map = {}
+        try:
+            # 获取脚本目录下的所有Python文件
+            script_files = []
+            if os.path.isfile(self.script_path):
+                script_files.append(self.script_path)
+            elif os.path.isdir(self.script_path):
+                for root, dirs, files in os.walk(self.script_path):
+                    for file in files:
+                        if file.endswith('.py'):
+                            script_files.append(os.path.join(root, file))
+            
+            for script_file in script_files:
+                with open(script_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 使用正则表达式匹配函数定义和@apiManualTime注释
+                # 匹配模式：def function_name(...): 后面的注释块中的@apiManualTime
+                import re
+                
+                # 匹配函数定义和其后的注释块中的@apiManualTime
+                function_pattern = r'def\s+(\w+)\s*\([^)]*\):.*?@apiManualTime\s+(\d+)'
+                matches = re.findall(function_pattern, content, re.DOTALL)
+                
+                for function_name, manual_time in matches:
+                    manual_time_map[function_name] = int(manual_time)
+                    
+        except Exception as e:
+            self.log.error(f"从源文件解析@apiManualTime失败: {e}")
+        return manual_time_map

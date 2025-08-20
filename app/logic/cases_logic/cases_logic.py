@@ -86,19 +86,39 @@ def run_logic(body: RunBody, call_type: CallTypeEnum, user: dict):
         end_time = time.perf_counter()
         cost = "%.2fs" % (end_time - start_time)
         LogDao.add(body.cases_id, body.requests_id, body.project_id, json.dumps(body.params, ensure_ascii=False), json.dumps(run_data, ensure_ascii=False),
-                   run_status=run_status, call_type=call_type, run_log=run_log, user=user)
+                   run_status=run_status, call_type=call_type, run_log=run_log, cost=cost, user=user)
         return dict(actual_request=body.params, actual_response=run_data, result = run_status, requests_id = body.requests_id, cost = cost, log = run_log)
     except:
         import traceback
         run_status = RunStatusEnum.fail.value
         run_log = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]: 脚本执行失败 -> 脚本目录：{body.project}/{body.directory}/{body.path}.py，执行{body.method}函数失败，kwargs：{body.params}，报错信息：\n{str(traceback.format_exc())}"
-        LogDao.add(body.cases_id, body.requests_id, body.project_id, json.dumps(body.params, ensure_ascii=False), run_param_out=None,
-                   run_status=run_status, call_type=call_type, run_log=run_log, user=user)
         end_time = time.perf_counter()
         cost = "%.2fs" % (end_time - start_time)
+        LogDao.add(body.cases_id, body.requests_id, body.project_id, json.dumps(body.params, ensure_ascii=False), run_param_out=None,
+                   run_status=run_status, call_type=call_type, run_log=run_log, cost=cost, user=user)
         return dict(actual_request=body.params, actual_response=None, result=run_status, requests_id=body.requests_id,
                     cost=cost, log=run_log)
 
+def get_efficiency_stats_logic(cases_id: int = None, group_name: str = None, project_id: int = None):
+    """
+    获取提效统计信息
+    :param cases_id: 场景ID（可选）
+    :param group_name: 业务线名称（可选）
+    :param project_id: 项目ID（可选）
+    :return: 提效统计信息
+    """
+    from app.crud.case.CaseDao import CaseDao
+    stats = CaseDao.get_efficiency_stats(cases_id, group_name, project_id)
+    return stats
+
+def get_team_efficiency_stats_logic():
+    """
+    获取团队整体提效统计
+    :return: 团队提效统计信息
+    """
+    from app.crud.case.CaseDao import CaseDao
+    stats = CaseDao.get_team_efficiency_stats()
+    return stats
 
 def plat_run_logic(body: RunBody):
     user = REQUEST_CONTEXT.get().user

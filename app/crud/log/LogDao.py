@@ -23,10 +23,10 @@ class LogDao(BaseCrud):
 
     @classmethod
     def add(cls, cases_id: int, requests_id: str, project_id: int, run_param_in: str,
-            run_param_out: Union[str, None], run_status: int, call_type: int, run_log: str, user: dict):
+            run_param_out: Union[str, None], run_status: int, call_type: int, run_log: str, cost: str = None, user: dict = None):
         """新增日志"""
         log = DataFactoryRunLog(cases_id, requests_id, project_id, run_param_in,
-                                    run_param_out, run_status, call_type, run_log, user)
+                                    run_param_out, run_status, call_type, run_log, cost, user)
         cls.insert_by_model(model_obj = log)
 
 
@@ -52,7 +52,7 @@ class LogDao(BaseCrud):
             if project: filter_list.append(DataFactoryProject.project_name == project)
             log = session.query(DataFactoryRunLog.requests_id, DataFactoryRunLog.run_param_in, DataFactoryRunLog.run_param_out,
                                 DataFactoryRunLog.call_type, DataFactoryRunLog.run_status, DataFactoryRunLog.run_log,
-                                DataFactoryCases.title, DataFactoryCases.name, DataFactoryCases.group_name,
+                                DataFactoryRunLog.cost, DataFactoryCases.title, DataFactoryCases.name, DataFactoryCases.group_name,
                                 DataFactoryCases.path, DataFactoryProject.project_name, DataFactoryProject.directory,
                                 DataFactoryRunLog.create_name, DataFactoryRunLog.create_time, DataFactoryRunLog.create_id). \
                 outerjoin(DataFactoryCases,

@@ -18,8 +18,9 @@ class DataFactoryRunLog(FunBaseModel):
     call_type = Column(SMALLINT, default=0, nullable=False, comment="调用方式, 0: 平台调用 1: 外链调用")
     run_status = Column(SMALLINT, default=0, nullable=False, comment="运行状态, 0: 运行成功 1: 运行异常 2: 运行失败")
     run_log = Column(Text, nullable=True, comment="运行日志")
+    cost = Column(String(20), nullable=True, comment="执行时长（秒）")
 
-    def __init__(self, cases_id, requests_id, project_id, run_param_in, run_param_out, run_status, call_type, run_log, user, del_flag=0, id=None):
+    def __init__(self, cases_id, requests_id, project_id, run_param_in, run_param_out, run_status, call_type, run_log, cost=None, user=None, del_flag=0, id=None):
         super().__init__(create_id=user['id'], create_name=user['username'], del_flag=del_flag, id=id)
         self.cases_id = cases_id
         self.requests_id = requests_id
@@ -29,3 +30,4 @@ class DataFactoryRunLog(FunBaseModel):
         self.run_status = run_status
         self.call_type = call_type
         self.run_log = run_log
+        self.cost = cost
