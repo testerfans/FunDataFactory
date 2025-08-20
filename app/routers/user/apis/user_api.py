@@ -4,7 +4,7 @@
 # @File : user.py
 
 from app.logic.user_logic import user_logic
-from app.routers.user.request_model.user_in import RegisterUserBody, LoginUserBody, UpdateUserBody, SearchUserBody
+from app.routers.user.request_model.user_in import RegisterUserBody, LoginUserBody, UpdateUserBody, SearchUserBody, ChangePasswordBody
 from app.commons.responses.response_model import ResponseDto, ListResponseDto
 
 def user_register(body: RegisterUserBody):
@@ -40,3 +40,8 @@ def user_update(body: UpdateUserBody):
 def user_search(body: SearchUserBody):
     user_lists = user_logic.user_search_logic(body)
     return ResponseDto(data = user_lists)
+
+
+def change_password(body: ChangePasswordBody):
+    user_logic.change_password_logic(body)
+    return ResponseDto(msg="密码修改成功")

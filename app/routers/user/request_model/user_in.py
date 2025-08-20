@@ -57,3 +57,18 @@ class SearchUserBody(BaseBody):
     @validator('keyword')
     def check_field(cls, v):
         return ToolsSchemas.not_empty(v)
+
+
+class ChangePasswordBody(BaseBody):
+    old_password: str = Field(..., title="原密码", description="必传")
+    new_password: str = Field(..., title="新密码", description="必传")
+
+    @validator('old_password', 'new_password')
+    def check_field(cls, v):
+        return ToolsSchemas.not_empty(v)
+
+    @validator('old_password', 'new_password')
+    def md5_paw(cls, value):
+        m = hashlib.md5()
+        m.update(f"{value}key={constants.TOKEN_KEY}".encode("utf-8"))
+        return m.hexdigest()

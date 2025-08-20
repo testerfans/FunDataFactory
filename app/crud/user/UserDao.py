@@ -6,7 +6,7 @@
 from sqlalchemy import or_
 from app.models.user import DataFactoryUser
 from app.const.enums import PermissionEnum
-from app.routers.user.request_model.user_in import LoginUserBody, UpdateUserBody, SearchUserBody, RegisterUserBody
+from app.routers.user.request_model.user_in import LoginUserBody, UpdateUserBody, SearchUserBody, RegisterUserBody, ChangePasswordBody
 from app.routers.user.response_model.user_out import SearchUserDto, UserDto
 from datetime import datetime
 from app.commons.exceptions.global_exception import BusinessException
@@ -108,3 +108,11 @@ class UserDao(BaseCrud):
         """统计用户数量"""
         user_sum = cls.get_with_count()
         return user_sum
+
+    @classmethod
+    def change_password(cls, body: ChangePasswordBody, user_id: int) -> None:
+        """用户修改自己的密码"""
+        ant = cls.get_with_existed(id=user_id, password=body.old_password)
+        if not ant:
+            raise BusinessException("原密码不正确")
+        cls.update_by_id(model={"id": user_id, "password": body.new_password})

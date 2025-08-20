@@ -66,3 +66,9 @@ router.add_api_route("/search",
                      methods=["post"],
                      name="搜索用户",
                      response_model=ResponseDto[List[SearchUserDto]])
+
+router.add_api_route("/change/password",
+                     user_api.change_password,
+                     methods=["post"],
+                     name="修改密码",
+                     response_model=ResponseDto)

@@ -5,7 +5,7 @@
 
 import json
 from app.crud.user.UserDao import UserDao
-from app.routers.user.request_model.user_in import RegisterUserBody, LoginUserBody, UpdateUserBody, SearchUserBody
+from app.routers.user.request_model.user_in import RegisterUserBody, LoginUserBody, UpdateUserBody, SearchUserBody, ChangePasswordBody
 from app.routers.user.response_model.user_out import UserDto
 from app.commons.utils.jwt_utils import UserToken
 from app.commons.utils.context_utils import REQUEST_CONTEXT
@@ -57,3 +57,11 @@ def user_update_logic(body: UpdateUserBody):
 def user_search_logic(body: SearchUserBody):
     user_list = UserDao.search_user(body)
     return user_list
+
+
+def change_password_logic(body: ChangePasswordBody):
+    request = REQUEST_CONTEXT.get()
+    if not request or not hasattr(request, 'scope') or 'user' not in request.scope:
+        raise BusinessException("未登录")
+    user = request.scope['user']
+    UserDao.change_password(body, user_id=user['id'])
