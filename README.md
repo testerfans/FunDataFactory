@@ -183,6 +183,33 @@ docker logs datafactoryserver
 docker exec -it datafactoryserver python health_check.py
 ```
 
+**故障排除：**
+如果容器启动失败，可以尝试以下步骤：
+
+1. **使用调试版本构建和运行：**
+```bash
+# 构建调试版本
+docker build -f Dockerfile.debug -t fun:debug .
+
+# 运行调试版本（查看详细日志）
+docker run -it --rm --name datafactoryserver_debug -p 5001:8080 fun:debug
+```
+
+2. **检查数据库连接：**
+```bash
+# 进入容器检查数据库连接
+docker exec -it datafactoryserver python -c "
+from app.commons.settings.config import Config
+print(f'数据库配置: {Config.SQLALCHEMY_DATABASE_URI}')
+"
+```
+
+3. **检查网络连接：**
+```bash
+# 在容器内测试数据库连接
+docker exec -it datafactoryserver ping 172.16.80.125
+```
+
 6. Nginx转发代理(非必须)
 
 如果已经申请了域名，可以给机器配上个域名，这样子就不用每次直接`ip+端口`访问，方便很多，如果没有申请域名，可忽略第5步···

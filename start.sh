@@ -30,5 +30,24 @@ python -c "import fastapi, uvicorn, gunicorn" || {
     exit 1
 }
 
+# 检查数据库连接
+echo "检查数据库连接..."
+python -c "
+import sys
+try:
+    from app.commons.settings.config import Config
+    from sqlalchemy import create_engine
+    engine = create_engine(Config.SQLALCHEMY_DATABASE_URI)
+    with engine.connect() as conn:
+        conn.execute('SELECT 1')
+    print('✅ 数据库连接成功')
+except Exception as e:
+    print(f'❌ 数据库连接失败: {e}')
+    sys.exit(1)
+" || {
+    echo "数据库连接检查失败，但继续启动服务..."
+}
+
 echo "启动服务..."
-exec gunicorn -c gunicorn.py main:fun
+# 使用exec确保进程替换，这样容器不会退出
+exec gunicorn -c gunicorn.py main:fun --log-level=debug
