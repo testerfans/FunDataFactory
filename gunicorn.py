@@ -16,6 +16,6 @@ daemon = False
 timeout = 30
 
 # 启动的进程数
-workers = multiprocessing.cpu_count()
-worker_class = 'gevent'
+workers = 1
+worker_class = 'uvicorn.workers.UvicornWorker'
 x_forwarded_for_header = 'X-FORWARDED-FOR'

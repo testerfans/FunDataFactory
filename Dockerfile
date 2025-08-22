@@ -3,4 +3,4 @@ WORKDIR /fun
 COPY . .
 RUN mkdir /fun/logs \
     && pip install -r requirements.txt
-CMD gunicorn -c gunicorn.py -k RestarUvicorn.RestartableUvicornWorker main:fun
+CMD gunicorn -c gunicorn.py main:fun
