@@ -10,9 +10,9 @@ import os
 class Config(object):
     """配置类"""
     #数据库连接信息
-    HOST = "127.0.0.1"
+    HOST = "172.16.80.125"
     PORT = "3306"
-    PWD = "root"
+    PWD = "Linlong888."
     USER = "root"
     DBNAME = "datafactory"
     PRO = True

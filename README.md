@@ -94,7 +94,15 @@
 
 ### 服务器部署
 我们只需要在服务器上`git clone`，下载项目并以项目中的dockerfile文件构建镜像
-1. 新建server目录
+
+#### 前置准备
+1. **创建数据库**
+```sql
+-- 在MySQL中执行以下SQL创建数据库
+CREATE DATABASE datafactory CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+2. **新建server目录
 ```shell
 mkdir /server
 cd /server
@@ -106,20 +114,20 @@ mkdir keys
 **备注:** keys目录上传刚才本地创建的公钥和私钥，这里我用的是`FinalShell`软件进行上传，如果不需要ssh拉取git项目，可以忽略创建keys目录
 
 
-2. 在server目录git clone项目
+3. 在server目录git clone项目
 ```shell
 cd /server
 git clone git@github.com:testerfans/FunDataFactory.git 
 git clone git@github.com:testerfans/FunDataFactoryWeb.git
 ```
-3. 分别执行构建镜像
+4. 分别执行构建镜像
 ```shell
 cd /server/FunDataFactory
 docker build -t fun:v1 .
 cd /server/FunDataFactoryWeb
 docker build -t fun_web:v1 .
 ```
-4. 创建并启动容器（示例使用宿主机端口 5001/5002）
+5. 创建并启动容器（示例使用宿主机端口 5001/5002）
 ```shell
 # 后端服务启动（容器内监听 8080 → 宿主机映射 5001）
 # 如果不需要ssh拉取git项目，可以忽略挂载keys目录
@@ -132,13 +140,16 @@ docker run -itd --name datafactoryserver \
 # 前端服务启动（容器内监听 80 → 宿主机映射 5002）
 docker run -itd --name datafactoryweb -p 5002:80 fun_web:v1
 ```
-**备注:** 请在安全组/防火墙放通 5001、5002。前端构建前在 `.env.production` 中设置：
-`VUE_APP_BASE_API=http://<你的服务器IP或域名>:5001/api`。
+**备注:** 
+- 请在安全组/防火墙放通 5001、5002。
+- 前端构建前在 `.env.production` 中设置：`VUE_APP_BASE_API=http://<你的服务器IP或域名>:5001/api`。
+- 确保MySQL服务已启动，且容器能访问宿主机MySQL（172.16.80.125:3306）。
+- 数据库表结构会在服务启动时自动创建，无需手动建表。
 
 
 启动成功后，浏览器访问`http://119.91.144.214`，`119.91.144.214`为服务器的ip地址
 
-5. Nginx转发代理(非必须)
+6. Nginx转发代理(非必须)
 
 如果已经申请了域名，可以给机器配上个域名，这样子就不用每次直接`ip+端口`访问，方便很多，如果没有申请域名，可忽略第5步···
 ```
