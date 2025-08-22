@@ -6,16 +6,30 @@
 import os
 
 
+# 获取环境变量，默认为开发环境
+ENV = os.getenv('ENV', 'development').lower()
+
 #fastapi 启动配置文件
 class Config(object):
     """配置类"""
-    #数据库连接信息
-    HOST = "172.16.80.125"
-    PORT = "3306"
-    PWD = "Linlong888."
-    USER = "root"
-    DBNAME = "datafactory"
-    PRO = True
+    
+    # 根据环境变量选择配置
+    if ENV == 'production':
+        # 生产环境配置
+        HOST = "172.16.80.125"
+        PORT = "3306"
+        PWD = "Linlong888."
+        USER = "root"
+        DBNAME = "datafactory"
+        PRO = True
+    else:
+        # 开发环境配置
+        HOST = "127.0.0.1"
+        PORT = "3306"
+        PWD = "root"
+        USER = "root"
+        DBNAME = "datafactory"
+        PRO = False
 
     # 数据库配置
     SQLALCHEMY_DATABASE_URI: str = f"mysql+pymysql://{USER}:{PWD}@{HOST}:{PORT}/{DBNAME}"
