@@ -139,6 +139,16 @@ docker build -t fun:v1 .
 cd /server/FunDataFactoryWeb
 docker build -t fun_web:v1 .
 ```
+**备注:** Dockerfile已配置国内包源，构建速度会更快：
+- 后端：使用清华大学PyPI镜像源（`https://pypi.tuna.tsinghua.edu.cn/simple/`）
+- 前端：使用淘宝npm镜像源（`https://registry.npmmirror.com/`）
+
+如需使用其他国内源，可参考项目中的 `pip.conf` 配置文件。
+
+**启动优化：**
+- 使用启动脚本 `start.sh` 进行服务启动前的检查
+- 生产环境关闭了代码热重载功能
+- 添加了健康检查脚本 `health_check.py`
 5. 创建并启动容器（示例使用宿主机端口 5001/5002）
 ```shell
 # 后端服务启动（容器内监听 8080 → 宿主机映射 5001）
@@ -160,6 +170,18 @@ docker run -itd --name datafactoryweb -p 5002:80 fun_web:v1
 
 
 启动成功后，浏览器访问`http://119.91.144.214`，`119.91.144.214`为服务器的ip地址
+
+**容器启动检查：**
+```bash
+# 查看容器状态
+docker ps
+
+# 查看容器日志
+docker logs datafactoryserver
+
+# 进入容器进行健康检查
+docker exec -it datafactoryserver python health_check.py
+```
 
 6. Nginx转发代理(非必须)
 
