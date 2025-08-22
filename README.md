@@ -149,6 +149,7 @@ docker build -t fun_web:v1 .
 - 使用启动脚本 `start.sh` 进行服务启动前的检查
 - 生产环境关闭了代码热重载功能
 - 添加了健康检查脚本 `health_check.py`
+- 配置了国内包源，加快构建速度
 5. 创建并启动容器（示例使用宿主机端口 5001/5002）
 ```shell
 # 后端服务启动（容器内监听 8080 → 宿主机映射 5001）
@@ -186,29 +187,44 @@ docker exec -it datafactoryserver python health_check.py
 **故障排除：**
 如果容器启动失败，可以尝试以下步骤：
 
-1. **使用调试版本构建和运行：**
+1. **检查容器状态和日志：**
 ```bash
-# 构建调试版本
-docker build -f Dockerfile.debug -t fun:debug .
+# 查看容器状态
+docker ps -a
 
-# 运行调试版本（查看详细日志）
-docker run -it --rm --name datafactoryserver_debug -p 5001:8080 fun:debug
+# 查看容器日志
+docker logs datafactoryserver
+
+# 进入容器检查
+docker exec -it datafactoryserver bash
 ```
 
 2. **检查数据库连接：**
 ```bash
-# 进入容器检查数据库连接
-docker exec -it datafactoryserver python -c "
-from app.commons.settings.config import Config
-print(f'数据库配置: {Config.SQLALCHEMY_DATABASE_URI}')
-"
+# 检查MySQL服务状态
+systemctl status mysql
+
+# 检查MySQL是否允许远程连接
+mysql -u root -p -e "SELECT user, host FROM mysql.user WHERE user='root';"
+
+# 如果需要，允许root用户远程连接
+mysql -u root -p -e "UPDATE mysql.user SET host='%' WHERE user='root'; FLUSH PRIVILEGES;"
 ```
 
 3. **检查网络连接：**
 ```bash
-# 在容器内测试数据库连接
-docker exec -it datafactoryserver ping 172.16.80.125
+# 测试网络连通性
+ping 172.16.80.125
+telnet 172.16.80.125 3306
 ```
+
+**常见问题：**
+- MySQL服务未启动
+- MySQL不允许远程连接
+- 防火墙阻止连接
+- 数据库不存在
+- 用户名密码错误
+- 前端API配置错误
 
 6. Nginx转发代理(非必须)
 
