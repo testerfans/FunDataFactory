@@ -223,10 +223,10 @@ def sync_project_logic_by_platform(id: int):
 
 def sync_project_logic_by_git(data: GitProject):
     # 如果是公司的gitlab平台，可以去除这段代码...
-    # request_ = REQUEST_CONTEXT.get()
-    # ant = check_webhook_signature(request_)
-    # if not ant:
-    #     raise BusinessException("验签有误！！！")
+    request_ = REQUEST_CONTEXT.get()
+    ant = check_webhook_signature(request_)
+    if not ant:
+        raise BusinessException("验签有误！！！")
     
     # 验签通过，进入同步
     
