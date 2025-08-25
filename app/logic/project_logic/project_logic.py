@@ -223,29 +223,17 @@ def sync_project_logic_by_platform(id: int):
 
 def sync_project_logic_by_git(data: GitProject):
     # 如果是公司的gitlab平台，可以去除这段代码...
-    request_ = REQUEST_CONTEXT.get()
-    ant = check_webhook_signature(request_)
-    if not ant:
-        raise BusinessException("验签有误！！！")
+    # request_ = REQUEST_CONTEXT.get()
+    # ant = check_webhook_signature(request_)
+    # if not ant:
+    #     raise BusinessException("验签有误！！！")
     
-    # 添加调试日志
-    logger.info(f"[gitSync] 验签通过，开始同步，项目名={data.project.name}")
-    
-    # 分支名解析与匹配（若 body 包含 ref 可在上层解析传入）
-    # 这里仅打印提示，实际匹配可在上层完成
-    try:
-        branch = getattr(data, 'ref', None)
-        if branch:
-            logger.info(f"[gitSync] 回调分支={branch}")
-    except Exception:
-        pass
+    # 验签通过，进入同步
     
     try:
         msg = sync_project_logic(type = SysEnum.git.value, project_name=data.project.name, user=constants.ADMIN)
-        logger.info(f"[gitSync] 项目同步成功: {data.project.name}")
         return msg
     except Exception as e:
-        logger.error(f"[gitSync] 项目同步失败: {data.project.name}, 错误: {str(e)}")
         raise BusinessException(f"项目同步失败: {str(e)}")
 
 def sync_project_list_logic():
