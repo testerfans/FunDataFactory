@@ -149,38 +149,25 @@ def start_init_project_logic():
             wait(all_task, return_when=ALL_COMPLETED)
 
 def check_webhook_signature(request: Request):
-    # 这个验签可以用中间件做，但是溜达哥说中间件太耗性能了，最好用依赖注入的形式，溜达哥yyds
-    # 中间件很耗性能的-->fastapi 原作者，starlette的锅...
+    """兼容 GitLab 与 Gitee 的 webhook 验签（不依赖 USER_AGENT 常量）"""
     headers = request.headers
-    user_agent = headers.get('user-agent')
-    
-    # 兼容 GitLab / Gitee 的 webhook 验签
-    if not user_agent:
-        raise BusinessException("验签有误！！！")
 
-    ua = user_agent.lower()
-
-    # GitLab: 优先校验 X-Gitlab-Token / X-Gitlab-Secret-Token
-    if 'gitlab' in ua:
-        logger.info("[gitSync] 验签开始: GitLab")
-        gitlab_token = headers.get('x-gitlab-token') or headers.get('x-gitlab-secret-token')
-        if gitlab_token and gitlab_token == constants.SECRET:
-            logger.info("[gitSync] 验签通过: GitLab")
+    # GitLab: 明文 Token 校验（X-Gitlab-Token）
+    gl_token = headers.get('x-gitlab-token')
+    if gl_token is not None:
+        if gl_token == constants.SECRET:
             return True
-        logger.error("[gitSync] 验签失败: GitLab token 不匹配或缺失")
         raise BusinessException("验签有误！！！")
 
-    # Gitee: 校验时间戳+签名
-    if user_agent == constants.USER_AGENT:
-        logger.info("[gitSync] 验签开始: Gitee")
-        gitee_timestamp = headers.get('x-gitee-timestamp')
-        gitee_token = headers.get('x-gitee-token')
-        if gitee_timestamp and gitee_token and Sha256.encrypt(str(gitee_timestamp)) == gitee_token:
-            logger.info("[gitSync] 验签通过: Gitee")
+    # Gitee: 时间戳 + Sha256(timestamp) == X-Gitee-Token
+    gt_ts = headers.get('x-gitee-timestamp')
+    gt_tk = headers.get('x-gitee-token')
+    if gt_ts is not None or gt_tk is not None:
+        if gt_ts and gt_tk and Sha256.encrypt(str(gt_ts)) == gt_tk:
             return True
-        logger.error("[gitSync] 验签失败: Gitee 签名不匹配或缺失")
         raise BusinessException("验签有误！！！")
 
+    # 未识别来源
     raise BusinessException("验签有误！！！")
 
 
