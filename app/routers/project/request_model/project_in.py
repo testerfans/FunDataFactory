@@ -74,3 +74,9 @@ class ProjectName(BaseBody):
 
 class GitProject(BaseBody):
     project: ProjectName
+    # GitLab webhook字段
+    object_kind: Optional[str] = Field(None, title="事件类型")
+    event_name: Optional[str] = Field(None, title="事件名称")
+    ref: Optional[str] = Field(None, title="分支信息")
+    before: Optional[str] = Field(None, title="之前的提交")
+    after: Optional[str] = Field(None, title="之后的提交")

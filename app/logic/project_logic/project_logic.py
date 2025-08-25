@@ -147,20 +147,34 @@ def start_init_project_logic():
                 all_task.append(ts.submit(init_install_project, project))
             wait(all_task, return_when=ALL_COMPLETED)
 
-def check_gitee(request: Request):
+def check_webhook_signature(request: Request):
     # 这个验签可以用中间件做，但是溜达哥说中间件太耗性能了，最好用依赖注入的形式，溜达哥yyds
     # 中间件很耗性能的-->fastapi 原作者，starlette的锅...
     headers = request.headers
     user_agent = headers.get('user-agent')
-    if user_agent and user_agent == constants.USER_AGENT:
+    
+    # 兼容 GitLab / Gitee 的 webhook 验签
+    if not user_agent:
+        raise BusinessException("验签有误！！！")
+
+    ua = user_agent.lower()
+
+    # GitLab: 优先校验 X-Gitlab-Token / X-Gitlab-Secret-Token
+    if 'gitlab' in ua:
+        gitlab_token = headers.get('x-gitlab-token') or headers.get('x-gitlab-secret-token')
+        if gitlab_token and gitlab_token == constants.SECRET:
+            return True
+        raise BusinessException("验签有误！！！")
+
+    # Gitee: 校验时间戳+签名
+    if user_agent == constants.USER_AGENT:
         gitee_timestamp = headers.get('x-gitee-timestamp')
         gitee_token = headers.get('x-gitee-token')
         if gitee_timestamp and gitee_token and Sha256.encrypt(str(gitee_timestamp)) == gitee_token:
             return True
-        else:
-            raise BusinessException("验签有误！！！")
-    else:
         raise BusinessException("验签有误！！！")
+
+    raise BusinessException("验签有误！！！")
 
 
 def sync_project_logic(type: str, user: dict, id: int = None, project_name: str = None):
@@ -203,11 +217,21 @@ def sync_project_logic_by_platform(id: int):
 def sync_project_logic_by_git(data: GitProject):
     # 如果是公司的gitlab平台，可以去除这段代码...
     request_ = REQUEST_CONTEXT.get()
-    ant = check_gitee(request_)
+    ant = check_webhook_signature(request_)
     if not ant:
         raise BusinessException("验签有误！！！")
-    msg = sync_project_logic(type = SysEnum.git.value, project_name=data.project.name, user=constants.ADMIN)
-    return msg
+    
+    # 添加调试日志
+    from loguru import logger
+    logger.info(f"GitLab webhook触发，项目名称: {data.project.name}")
+    
+    try:
+        msg = sync_project_logic(type = SysEnum.git.value, project_name=data.project.name, user=constants.ADMIN)
+        logger.info(f"项目同步成功: {data.project.name}")
+        return msg
+    except Exception as e:
+        logger.error(f"项目同步失败: {data.project.name}, 错误: {str(e)}")
+        raise BusinessException(f"项目同步失败: {str(e)}")
 
 def sync_project_list_logic():
     user = REQUEST_CONTEXT.get().user

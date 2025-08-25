@@ -35,4 +35,4 @@ ERROR_MSG_TEMPLATES = {
 
 USER_AGENT = 'git-oschina-hook'
 
-SECRET = 'fangjunjie1996'
+SECRET = 'webhook_signature'
