@@ -19,6 +19,7 @@ from app.core.get_project_path import ProjectPath
 from app.core.api_doc_parse import ApiDocParse
 from app.commons.utils.cmd_utils import CmdUtils
 from starlette.requests import Request
+from loguru import logger
 from app.const import constants
 
 
@@ -161,17 +162,23 @@ def check_webhook_signature(request: Request):
 
     # GitLab: 优先校验 X-Gitlab-Token / X-Gitlab-Secret-Token
     if 'gitlab' in ua:
+        logger.info("[gitSync] 验签开始: GitLab")
         gitlab_token = headers.get('x-gitlab-token') or headers.get('x-gitlab-secret-token')
         if gitlab_token and gitlab_token == constants.SECRET:
+            logger.info("[gitSync] 验签通过: GitLab")
             return True
+        logger.error("[gitSync] 验签失败: GitLab token 不匹配或缺失")
         raise BusinessException("验签有误！！！")
 
     # Gitee: 校验时间戳+签名
     if user_agent == constants.USER_AGENT:
+        logger.info("[gitSync] 验签开始: Gitee")
         gitee_timestamp = headers.get('x-gitee-timestamp')
         gitee_token = headers.get('x-gitee-token')
         if gitee_timestamp and gitee_token and Sha256.encrypt(str(gitee_timestamp)) == gitee_token:
+            logger.info("[gitSync] 验签通过: Gitee")
             return True
+        logger.error("[gitSync] 验签失败: Gitee 签名不匹配或缺失")
         raise BusinessException("验签有误！！！")
 
     raise BusinessException("验签有误！！！")
@@ -222,15 +229,23 @@ def sync_project_logic_by_git(data: GitProject):
         raise BusinessException("验签有误！！！")
     
     # 添加调试日志
-    from loguru import logger
-    logger.info(f"GitLab webhook触发，项目名称: {data.project.name}")
+    logger.info(f"[gitSync] 验签通过，开始同步，项目名={data.project.name}")
+    
+    # 分支名解析与匹配（若 body 包含 ref 可在上层解析传入）
+    # 这里仅打印提示，实际匹配可在上层完成
+    try:
+        branch = getattr(data, 'ref', None)
+        if branch:
+            logger.info(f"[gitSync] 回调分支={branch}")
+    except Exception:
+        pass
     
     try:
         msg = sync_project_logic(type = SysEnum.git.value, project_name=data.project.name, user=constants.ADMIN)
-        logger.info(f"项目同步成功: {data.project.name}")
+        logger.info(f"[gitSync] 项目同步成功: {data.project.name}")
         return msg
     except Exception as e:
-        logger.error(f"项目同步失败: {data.project.name}, 错误: {str(e)}")
+        logger.error(f"[gitSync] 项目同步失败: {data.project.name}, 错误: {str(e)}")
         raise BusinessException(f"项目同步失败: {str(e)}")
 
 def sync_project_list_logic():

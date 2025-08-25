@@ -4,6 +4,8 @@
 # @File : project_api.py
 
 from app.routers.project.request_model.project_in import AddProject, EditProject, AddProjectRole, EditProjectRole, GitProject
+from loguru import logger
+from starlette.requests import Request
 from app.commons.responses.response_model import ResponseDto, ListResponseDto
 from app.logic.project_logic import project_logic
 
@@ -75,7 +77,25 @@ def sync_project_list():
     project = project_logic.sync_project_list_logic()
     return ResponseDto(data = project)
 
-def sync_project_by_git(body: GitProject):
+def sync_project_by_git(body: GitProject, request: Request):
+    try:
+        # 日志：收到回调，请求头与请求体摘要
+        headers_brief = {
+            'user-agent': request.headers.get('user-agent'),
+            'x-gitlab-token': '***' if request.headers.get('x-gitlab-token') else None,
+            'x-gitlab-secret-token': '***' if request.headers.get('x-gitlab-secret-token') else None,
+            'x-gitee-timestamp': request.headers.get('x-gitee-timestamp'),
+            'x-gitee-token': '***' if request.headers.get('x-gitee-token') else None,
+        }
+        logger.info(f"[gitSync] 收到Webhook回调，headers={headers_brief}")
+        try:
+            logger.info(f"[gitSync] 回调body={body.dict()}")
+        except Exception:
+            logger.info("[gitSync] 回调body无法序列化为dict，已跳过打印")
+    except Exception:
+        # 防止日志异常影响主流程
+        pass
+
     msg = project_logic.sync_project_logic_by_git(body)
     return ResponseDto(msg = msg)
 
