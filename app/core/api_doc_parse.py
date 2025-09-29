@@ -246,15 +246,29 @@ class ApiDocParse(object):
         return json.dumps(tree_params, ensure_ascii=False)
 
     @staticmethod
-    def __find_son_params(pk: str, params_list: list, link_list: list) -> list:
+    def __find_son_params(pk: str, params_list: list, link_list: list, visited_keys: set = None) -> list:
         """
-        找出子
+        找出子参数
         :param pk: 父参数
         :param params_list: 参数列表
         :param link_list: 链路集合
+        :param visited_keys: 已访问的键集合，防止循环引用
         :return:
         """
+        if visited_keys is None:
+            visited_keys = set()
+        
+        # 防止循环引用
+        if pk in visited_keys:
+            return []
+        
+        # 限制递归深度
+        if len(visited_keys) > 10:
+            return []
+        
+        visited_keys.add(pk)
         son_params = []
+        
         for param in params_list:
             field_list = param['field'].split('.')
             if len(field_list) > 1:
@@ -262,10 +276,12 @@ class ApiDocParse(object):
                 if father_key == pk:
                     if "Object" in param['type']:
                         # 如果有object类型继续递归找出子
-                        param['child'] = ApiDocParse.__find_son_params(son_key, params_list, link_list)
+                        param['child'] = ApiDocParse.__find_son_params(son_key, params_list, link_list, visited_keys.copy())
                     param['field'] = son_key
                     son_params.append(param)
                     link_list.append(param['id'])
+        
+        visited_keys.remove(pk)
         return son_params
 
     @staticmethod
