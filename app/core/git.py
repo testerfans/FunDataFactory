@@ -8,6 +8,7 @@ from app.commons.settings.config import FilePath
 from app.commons.utils.cmd_utils import CmdUtils
 from urllib.parse import quote
 from loguru import logger
+from typing import Optional
 
 class Git(object):
 
@@ -45,9 +46,36 @@ class Git(object):
         if platform.platform() == 'Windows':
             FilePath.RSA_PRI_KEY = FilePath.RSA_PRI_KEY.replace('\\', r'\\')
         logger.info("ssh克隆开始")
-        command_str = f"cd {FilePath.BASE_DIR} && " \
-                      f'git clone -b {git_branch} {git_url} --config core.sshCommand="ssh -i {FilePath.RSA_PRI_KEY}"'
-        CmdUtils.cmd(command_str)
+        # 1) 动态预置 known_hosts，避免首次连接交互确认主机指纹
+        def _extract_host(url: str) -> Optional[str]:
+            try:
+                # 兼容 git@host:org/repo.git
+                if url.startswith('git@'):
+                    return url.split('@', 1)[1].split(':', 1)[0]
+                # 兼容 ssh://user@host/xxx.git
+                if url.startswith('ssh://'):
+                    from urllib.parse import urlparse
+                    return urlparse(url).hostname
+            except Exception:
+                return None
+            return None
+
+        host = _extract_host(git_url)
+        if host:
+            ensure_known_hosts = (
+                f"mkdir -p /root/.ssh && chmod 700 /root/.ssh && "
+                f"ssh-keyscan -T 5 -t rsa,ecdsa,ed25519 {host} >> /root/.ssh/known_hosts && "
+                f"chmod 644 /root/.ssh/known_hosts"
+            )
+            CmdUtils.cmd(ensure_known_hosts, timeout=30)
+
+        # 2) 执行克隆，指定私钥；预置了 known_hosts，因此无需关闭校验
+        command_str = (
+            f"cd {FilePath.BASE_DIR} && "
+            f"git clone -b {git_branch} {git_url} --config core.sshCommand=\"ssh -i {FilePath.RSA_PRI_KEY}\""
+        )
+        # 首次 clone 可能较慢，适当提高超时
+        CmdUtils.cmd(command_str, timeout=180)
         logger.info("ssh克隆结束")
 
     @staticmethod
