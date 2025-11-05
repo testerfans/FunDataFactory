@@ -16,6 +16,9 @@ class RunScript(object):
     def _clear_module_cache(module_name: str):
         """
         清理模块缓存，包括相关的子模块
+        同时清理 business 和 common 模块缓存，解决以下问题：
+        1. 代码更新后使用旧代码的问题（git pull 后需要重新加载）
+        2. 多项目间的模块名冲突问题（不同项目的 business 模块名相同，sys.modules 是全局的）
         """
         # 清理主模块
         if module_name in sys.modules:
@@ -27,7 +30,25 @@ class RunScript(object):
             if name.startswith(module_name + '.'):
                 modules_to_remove.append(name)
         
+        # 关键：清理所有 business 和 common 模块缓存
+        # 解决多项目间的模块名冲突问题
+        # 因为 sys.modules 是全局的，不同项目的 business 模块名相同，会冲突
+        business_modules_to_remove = []
+        common_modules_to_remove = []
+        
+        # 使用 list() 避免迭代时修改字典
+        for name in list(sys.modules.keys()):
+            if name == 'business' or name.startswith('business.'):
+                business_modules_to_remove.append(name)
+            elif name == 'common' or name.startswith('common.'):
+                common_modules_to_remove.append(name)
+        
+        # 清理所有相关模块
         for name in modules_to_remove:
+            del sys.modules[name]
+        for name in business_modules_to_remove:
+            del sys.modules[name]
+        for name in common_modules_to_remove:
             del sys.modules[name]
 
     @staticmethod

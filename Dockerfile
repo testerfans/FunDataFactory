@@ -7,6 +7,12 @@ RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/ \
 
 COPY . .
 
+# 使用国内APT源并安装 ffmpeg
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g; s|security.debian.org|mirrors.tuna.tsinghua.edu.cn|g; s|archive.ubuntu.com|mirrors.aliyun.com|g; s|security.ubuntu.com|mirrors.aliyun.com|g' /etc/apt/sources.list || true \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # 创建日志目录并设置权限
 RUN mkdir -p /fun/logs \
     && chmod 755 /fun/logs \
