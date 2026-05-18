@@ -3,13 +3,10 @@
 # @Author : junjie
 # @File : request_model.py
 from pydantic import BaseModel
-from app.const.constants import ERROR_MSG_TEMPLATES
 
 
 class BaseBody(BaseModel):
-    # 入参基础模型
-    class Config:
-        error_msg_templates = ERROR_MSG_TEMPLATES
+    """入参基础模型"""
 
 
 class ToolsSchemas(object):

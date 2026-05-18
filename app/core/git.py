@@ -6,9 +6,14 @@
 
 from app.commons.settings.config import FilePath
 from app.commons.utils.cmd_utils import CmdUtils
+from app.commons.exceptions.global_exception import BusinessException
 from urllib.parse import quote
 from loguru import logger
 from typing import Optional
+from pathlib import Path
+import os
+import stat
+import subprocess
 
 class Git(object):
 
@@ -42,40 +47,73 @@ class Git(object):
         :param git_url: 代码地址
         :return:
         """
-        import platform
-        if platform.platform() == 'Windows':
-            FilePath.RSA_PRI_KEY = FilePath.RSA_PRI_KEY.replace('\\', r'\\')
         logger.info("ssh克隆开始")
-        # 1) 动态预置 known_hosts，避免首次连接交互确认主机指纹
-        def _extract_host(url: str) -> Optional[str]:
+        # 动态预置 known_hosts，避免首次连接交互确认主机指纹。
+        def _extract_host(url: str) -> tuple[Optional[str], Optional[int]]:
             try:
                 # 兼容 git@host:org/repo.git
                 if url.startswith('git@'):
-                    return url.split('@', 1)[1].split(':', 1)[0]
+                    return url.split('@', 1)[1].split(':', 1)[0], None
                 # 兼容 ssh://user@host/xxx.git
                 if url.startswith('ssh://'):
                     from urllib.parse import urlparse
-                    return urlparse(url).hostname
+                    parsed = urlparse(url)
+                    return parsed.hostname, parsed.port
             except Exception:
-                return None
-            return None
+                return None, None
+            return None, None
 
-        host = _extract_host(git_url)
+        def _known_hosts_file() -> Path:
+            ssh_dir = Path.home() / ".ssh"
+            ssh_dir.mkdir(mode=0o700, exist_ok=True)
+            if os.name != "nt":
+                ssh_dir.chmod(0o700)
+            known_hosts = ssh_dir / "known_hosts"
+            known_hosts.touch(exist_ok=True)
+            if os.name != "nt":
+                known_hosts.chmod(stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+            return known_hosts
+
+        host, port = _extract_host(git_url)
+        known_hosts = _known_hosts_file()
         if host:
-            ensure_known_hosts = (
-                f"mkdir -p /root/.ssh && chmod 700 /root/.ssh && "
-                f"ssh-keyscan -T 5 -t rsa,ecdsa,ed25519 {host} >> /root/.ssh/known_hosts && "
-                f"chmod 644 /root/.ssh/known_hosts"
-            )
-            CmdUtils.cmd(ensure_known_hosts, timeout=30)
+            keyscan_cmd = ["ssh-keyscan", "-T", "5", "-t", "rsa,ecdsa,ed25519"]
+            if port:
+                keyscan_cmd.extend(["-p", str(port)])
+            keyscan_cmd.append(host)
+            try:
+                with known_hosts.open("a", encoding="utf-8") as fp:
+                    subprocess.run(
+                        keyscan_cmd,
+                        check=True,
+                        timeout=30,
+                        stdout=fp,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                    )
+            except (FileNotFoundError, subprocess.SubprocessError) as exc:
+                logger.warning(f"写入 known_hosts 失败，将由 ssh 自动接受新主机指纹: {exc}")
 
-        # 2) 执行克隆，指定私钥；预置了 known_hosts，因此无需关闭校验
-        command_str = (
-            f"cd {FilePath.BASE_DIR} && "
-            f"git clone -b {git_branch} {git_url} --config core.sshCommand=\"ssh -i {FilePath.RSA_PRI_KEY}\""
+        env = os.environ.copy()
+        env["GIT_SSH_COMMAND"] = (
+            f'ssh -i "{FilePath.RSA_PRI_KEY}" '
+            f'-o StrictHostKeyChecking=accept-new '
+            f'-o UserKnownHostsFile="{known_hosts}"'
         )
-        # 首次 clone 可能较慢，适当提高超时
-        CmdUtils.cmd(command_str, timeout=180)
+        try:
+            subprocess.run(
+                ["git", "clone", "-b", git_branch, git_url],
+                cwd=FilePath.BASE_DIR,
+                env=env,
+                check=True,
+                timeout=180,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        except Exception as exc:
+            logger.error(f"ssh克隆失败, 错误信息: {str(exc)}")
+            raise BusinessException("命令执行失败!!! ")
         logger.info("ssh克隆结束")
 
     @staticmethod

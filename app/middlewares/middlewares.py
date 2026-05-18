@@ -7,7 +7,7 @@ from app.commons.settings import config
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.types import ASGIApp, Scope, Receive, Send
-from app.commons.utils.auth_utils import authentication
+from app.commons.utils.auth_utils import authentication, request_context
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.commons.exceptions.expention_handler import global_exception_handler
 
@@ -46,6 +46,8 @@ class BaseMiddleware(object):
 class AuthMiddleware(BaseMiddleware):
     """权限和登录态中间件"""
     async def before_request(self, request: Request):
+        """设置请求上下文"""
+        await request_context(request)
         """白名单pass"""
         for api_url in config.API_WHITE_LIST:
             if str(request.url.path).startswith(api_url):

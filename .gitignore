@@ -20,6 +20,9 @@ parts/
 sdist/
 var/
 logs/
+uploads/
+app/uploads/
+app/static/
 keys/
 FunCase/
 wheels/

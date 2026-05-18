@@ -4,7 +4,7 @@
 # @File : user_schems.py
 
 import hashlib
-from pydantic import validator, Field, EmailStr
+from pydantic import field_validator, Field, EmailStr
 from app.const import constants
 from app.const.enums import PermissionEnum
 from app.commons.requests.request_model import BaseBody, ToolsSchemas
@@ -17,11 +17,13 @@ class RegisterUserBody(BaseBody):
     email: EmailStr = Field(..., title="邮箱号", description="必传")
     role: PermissionEnum = Field(PermissionEnum.members, title="用户权限", description="非必传，默认为普通用户")
 
-    @validator('username', 'password', 'name', 'email')
+    @field_validator('username', 'password', 'name', 'email')
+    @classmethod
     def check_field(cls, v):
         return ToolsSchemas.not_empty(v)
 
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def md5_paw(cls, value):
         m = hashlib.md5()
         m.update(f"{value}key={constants.TOKEN_KEY}".encode("utf-8"))
@@ -31,11 +33,13 @@ class LoginUserBody(BaseBody):
     username: str = Field(..., title="用户名", description="必传")
     password: str = Field(..., title="密码", description="必传")
 
-    @validator('username', 'password')
+    @field_validator('username', 'password')
+    @classmethod
     def check_field(cls, v):
         return ToolsSchemas.not_empty(v)
 
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def md5_paw(cls, value):
         m = hashlib.md5()
         m.update(f"{value}key={constants.TOKEN_KEY}".encode("utf-8"))
@@ -46,7 +50,8 @@ class UpdateUserBody(BaseBody):
     role: PermissionEnum = Field(None, title="用户权限", description="非必传")
     is_valid: bool = Field(None, title="是否冻结", description="非必传")
 
-    @validator('id', 'role', 'is_valid')
+    @field_validator('id', 'role', 'is_valid')
+    @classmethod
     def check_field(cls, v):
         return ToolsSchemas.not_empty(v)
 
@@ -54,7 +59,8 @@ class UpdateUserBody(BaseBody):
 class SearchUserBody(BaseBody):
     keyword: str = Field(..., title="搜索内容", description="必传")
 
-    @validator('keyword')
+    @field_validator('keyword')
+    @classmethod
     def check_field(cls, v):
         return ToolsSchemas.not_empty(v)
 
@@ -63,11 +69,13 @@ class ChangePasswordBody(BaseBody):
     old_password: str = Field(..., title="原密码", description="必传")
     new_password: str = Field(..., title="新密码", description="必传")
 
-    @validator('old_password', 'new_password')
+    @field_validator('old_password', 'new_password')
+    @classmethod
     def check_field(cls, v):
         return ToolsSchemas.not_empty(v)
 
-    @validator('old_password', 'new_password')
+    @field_validator('old_password', 'new_password')
+    @classmethod
     def md5_paw(cls, value):
         m = hashlib.md5()
         m.update(f"{value}key={constants.TOKEN_KEY}".encode("utf-8"))

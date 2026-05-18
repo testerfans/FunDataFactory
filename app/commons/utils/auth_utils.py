@@ -29,8 +29,8 @@ async def authentication(request: Request):
         raise PermissionException()
     if role < PermissionEnum.leader.value and str(request.url.path) in config.API_LEADER_LIST:
         raise PermissionException()
-    user_dict = UserDto.from_orm(user)
-    request.scope['user'] = user_dict.dict()
+    user_dict = UserDto.model_validate(user)
+    request.scope['user'] = user_dict.model_dump()
 
 
 

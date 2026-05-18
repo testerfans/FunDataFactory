@@ -4,7 +4,7 @@
 # @File : project_in.py
 
 
-from pydantic import validator, Field
+from pydantic import field_validator, Field
 from typing import Optional
 from app.commons.requests.request_model import BaseBody, ToolsSchemas
 from app.const.enums import PullTypeEnum, ProjectRoleEnum
@@ -24,29 +24,38 @@ class AddProject(BaseBody):
     git_account: Optional[str] = Field(..., title="git账号", description="非必传")
     git_password: Optional[str] = Field(..., title="git密码", description="非必传")
 
-    @validator('project_name', 'owner', 'directory', 'private', 'git_project', 'pull_type', 'git_url','git_branch')
+    @field_validator('project_name', 'owner', 'directory', 'private', 'git_project', 'pull_type', 'git_url','git_branch')
+    @classmethod
     def name_not_empty(cls, v):
         return ToolsSchemas.not_empty(v)
 
-    @validator('git_account')
-    def check_account(cls, v, values, **kwargs):
-        if 'pull_type' in values and values['pull_type'] == 0:
+    @field_validator('git_account')
+    @classmethod
+    def check_account(cls, v, info):
+        if info.data.get('pull_type') == PullTypeEnum.http:
             v = ToolsSchemas.not_empty(v)
             return v
         return v
 
-    @validator('git_password')
-    def check_pwd(cls, v, values, **kwargs):
-        if 'pull_type' in values and values['pull_type'] == 0:
+    @field_validator('git_password')
+    @classmethod
+    def check_pwd(cls, v, info):
+        if info.data.get('pull_type') == PullTypeEnum.http:
             v = ToolsSchemas.not_empty(v)
             from app.commons.utils.encrypt_utils import AesUtils
+            try:
+                AesUtils.decrypt(v)
+                return v
+            except Exception:
+                pass
             return AesUtils.encrypt(v)
         return v
 
 class EditProject(AddProject):
     id : int=Field(..., title="项目id", description="主键id")
 
-    @validator('id')
+    @field_validator('id')
+    @classmethod
     def id_not_empty(cls, v):
         return ToolsSchemas.not_empty(v)
 
@@ -57,7 +66,8 @@ class AddProjectRole(BaseBody):
     user_id: int = Field(..., title="用户id", description="必传")
 
 
-    @validator('project_id', 'project_role', 'user_id')
+    @field_validator('project_id', 'project_role', 'user_id')
+    @classmethod
     def name_not_empty(cls, v):
         return ToolsSchemas.not_empty(v)
 
@@ -65,7 +75,8 @@ class EditProjectRole(BaseBody):
     project_role: ProjectRoleEnum = Field(..., title="项目权限", description="必传")
     id : int=Field(..., title="项目权限id", description="主键id")
 
-    @validator('id', 'project_role')
+    @field_validator('id', 'project_role')
+    @classmethod
     def id_not_empty(cls, v):
         return ToolsSchemas.not_empty(v)
 

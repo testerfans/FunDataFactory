@@ -1,4 +1,4 @@
-FROM fangchat/python:3.9-node
+FROM python:3.11-slim
 WORKDIR /fun
 
 # 设置国内Python包源，加快安装速度

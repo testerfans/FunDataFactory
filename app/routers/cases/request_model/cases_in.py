@@ -4,7 +4,7 @@
 # @File : cases_in.py
 
 import json
-from pydantic import validator, Field
+from pydantic import field_validator, Field
 from app.commons.requests.request_model import BaseBody, ToolsSchemas
 
 class AddCasesParams(BaseBody):
@@ -12,11 +12,13 @@ class AddCasesParams(BaseBody):
     name: str = Field(..., title="参数组合名称", description="必传")
     params: str = Field(..., title="参数组合", description="必传")
 
-    @validator('cases_id', 'name', 'params')
+    @field_validator('cases_id', 'name', 'params')
+    @classmethod
     def not_empty(cls, v):
         return ToolsSchemas.not_empty(v)
 
-    @validator('params')
+    @field_validator('params')
+    @classmethod
     def is_json(cls, v):
         try:
             json_object = json.loads(v)
@@ -27,7 +29,8 @@ class AddCasesParams(BaseBody):
 class EditCasesParmas(AddCasesParams):
     id : int=Field(..., title="参数id", description="主键id")
 
-    @validator('id')
+    @field_validator('id')
+    @classmethod
     def id_not_empty(cls, v):
         return ToolsSchemas.not_empty(v)
 
@@ -41,6 +44,7 @@ class RunBody(BaseBody):
     directory : str = Field(..., title="脚本所在目录", description="必传")
     requests_id : str = Field(..., title="32位请求id", description="必传")
 
-    @validator('path', 'cases_id', 'project_id', 'method', 'requests_id', 'directory')
+    @field_validator('path', 'cases_id', 'project_id', 'method', 'requests_id', 'directory')
+    @classmethod
     def name_not_empty(cls, v):
         return ToolsSchemas.not_empty(v)

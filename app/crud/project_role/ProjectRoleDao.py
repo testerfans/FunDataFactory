@@ -30,7 +30,7 @@ class ProjectRoleDao(BaseCrud):
             user_query = session.query(DataFactoryUser).filter(DataFactoryUser.id == form.user_id).first()
             if user_query is None:
                 raise BusinessException("用户不存在！！！")
-            if user_query.is_valid:
+            if not user_query.is_valid:
                 raise BusinessException("对不起, 该账号已被冻结, 无法添加项目权限")
             ant = cls.get_with_existed(session = session, user_id = form.user_id, project_id = form.project_id)
             if ant:

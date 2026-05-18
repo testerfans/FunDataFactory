@@ -17,49 +17,49 @@ from datetime import datetime
 from app.commons.exceptions.global_exception import BusinessException
 
 def like_logic(id : int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     result = LikeOperationDao.like(id, user)
     return result
 
 def collection_logic(id : int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     result = CollectionOperationDao.collection(id, user)
     return result
 
 def get_user_groups_logic():
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     groups = CaseDao.get_user_group_name(user)
     group_list = [i[0] for i in groups]
     return group_list
 
 def search_case_logic(keyword: str):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     cases = CaseDao.get_search_case(user, keyword)
     return cases
 
 def case_list_logic(page: int=1, limit: int=10, show: str = None,
                     project_id: int=None, case_id: int=None):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     cases, total = CaseDao.get_all_cases(user, page, limit, show, project_id, case_id)
     cases_lists = dict(total=total, lists=cases)
     return cases_lists
 
 def case_detail_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     case = CaseDao.case_detail_by_id(id, user)
     return case
 
 def add_params_logic(body: AddCasesParams):
     import uuid
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     CaseParamsDao.insert_cases_params(body, out_id = uuid.uuid4().hex, user = user)
 
 def edit_params_logic(body: EditCasesParmas):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     CaseParamsDao.update_cases_params(body, user = user)
 
 def delete_params_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     CaseParamsDao.deleta_cases_params(id, user)
 
 def get_cases_params_logic(cases_id: int, page: int, limit: int):
@@ -121,14 +121,14 @@ def get_team_efficiency_stats_logic():
     return stats
 
 def plat_run_logic(body: RunBody):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     # 判断用户项目权限
     ProjectRoleDao.read_permission(body.project_id, user)
     return run_logic(body, CallTypeEnum.plat.value, user)
 
 def log_list_logic(page: int=1, limit: int=20, group: str = None, project:str = None,
                    requests_id: str = None, search: str = None, call_type: str = None, run_status: str = None):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     logs, total = LogDao.get_all_logs(user, page, limit, group, project, requests_id, call_type, run_status, search)
     logs_lists = dict(total=total, lists=logs)
     return logs_lists

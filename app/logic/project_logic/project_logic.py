@@ -26,17 +26,17 @@ from app.const import constants
 
 def insert_project_logic(body: AddProject):
     # todo: git_project不能与后端服务的所有目录名重名
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectDao.insert_project(body, user)
 
 
 def update_project_logic(body: EditProject):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectDao.update_project(body, user)
 
 
 def delete_project_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     project = ProjectDao.delete_project(id, user)
     import os
     project_path = os.path.join(FilePath.BASE_DIR, project.git_project)
@@ -45,7 +45,7 @@ def delete_project_logic(id: int):
 
 
 def get_project_lists_logic(page: int=1, limit: int=10, search=None):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     total, project_infos= ProjectDao.list_project(user, page, limit, search)
     project_lists = dict(total=total, lists=project_infos)
     return project_lists
@@ -53,47 +53,50 @@ def get_project_lists_logic(page: int=1, limit: int=10, search=None):
 
 
 def insert_project_role_logic(data: AddProjectRole):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectRoleDao.insert_project_role(data, user)
 
 
 
 def update_project_role_logic(data: EditProjectRole):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectRoleDao.update_project_role(data, user)
 
 
 
 def delete_project_role_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectRoleDao.delete_project_role(id, user)
 
 
 def project_role_list_logic(project_id: int, page: int=1, limit: int=10, search=None):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     roles, total = ProjectRoleDao.project_role_list(user, project_id, page, limit, search)
     project_role_list = dict(total=total, lists=roles)
     return project_role_list
 
 
 def read_project_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectRoleDao.read_permission(id, user)
 
 
 def operation_project_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     ProjectRoleDao.operation_permission(id, user)
 
 
 
 def init_project_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
+    ProjectRoleDao.operation_permission(id, user)
     project = ProjectDao.project_detail(id, user)
     project_path = os.path.join(FilePath.BASE_DIR, project.git_project)
     if os.path.isdir(project_path):
-        raise BusinessException("项目已存在, 请执行刷新项目！")
+        Git.git_pull(project_path, project.git_branch)
+        return "项目已存在，已拉取最新代码"
     init_project(project)
+    return "初始化成功"
 
 
 def init_project(project: DataFactoryProject):
@@ -111,15 +114,15 @@ def init_install_project(project: DataFactoryProject):
 
 def project_install_common(project_path: str):
     path = os.path.join(FilePath.BASE_DIR, project_path)
-    if not os.path.isdir(project_path):
+    if not os.path.isdir(path):
         raise BusinessException("项目不存在, 请执行初始化项目！")
-    txt_path = os.path.join(project_path, 'requirements.txt')
+    txt_path = os.path.join(path, 'requirements.txt')
     if not os.path.exists(txt_path):
         raise BusinessException(f"找不到对应的requirements.txt, 请git push 推送上传！")
     return path, txt_path
 
 def install_project_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     project = ProjectDao.project_detail(id, user)
     path, _ = project_install_common(project.git_project)
     msg = Git.project_install(path)
@@ -127,7 +130,7 @@ def install_project_logic(id: int):
 
 
 def project_detail_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     rsa_pub_key = None
     project = ProjectDao.project_detail(id, user)
     if project.pull_type == PullTypeEnum.ssh.value:
@@ -142,11 +145,18 @@ def start_init_project_logic():
     workers = len(projects)
     if workers > 0:
         with ThreadPoolExecutor(max_workers=workers) as ts:
-            all_task = []
-            for project in projects:
-                all_task.append(ts.submit(init_project, project))
-                all_task.append(ts.submit(init_install_project, project))
-            wait(all_task, return_when=ALL_COMPLETED)
+            all_task = [ts.submit(start_init_one_project, project) for project in projects]
+            done, _ = wait(all_task, return_when=ALL_COMPLETED)
+            for task in done:
+                exc = task.exception()
+                if exc:
+                    logger.error(f"启动初始化项目失败: {exc}")
+
+def start_init_one_project(project: DataFactoryProject):
+    project_path = os.path.join(FilePath.BASE_DIR, project.git_project)
+    if not os.path.isdir(project_path):
+        init_project(project)
+    init_install_project(project)
 
 def check_webhook_signature(request: Request):
     """兼容 GitLab 与 Gitee 的 webhook 验签（不依赖 USER_AGENT 常量）"""
@@ -194,6 +204,8 @@ def sync_project_logic(type: str, user: dict, id: int = None, project_name: str 
     # step4 获取该项目的所有造数场景
     from fastapi.encoders import jsonable_encoder
     project_cases = CaseDao.get_projet_case(project.id)
+    # SQLAlchemy 2.0 Row 对象需要转为 dict 才能被 jsonable_encoder 处理
+    project_cases = [dict(row._mapping) for row in project_cases]
     project_cases = jsonable_encoder(project_cases)
     # step5 处理同步数据
     msg_dict = api_doc.sync_data(project.id, api_data, project_cases, user)
@@ -204,7 +216,7 @@ def sync_project_logic(type: str, user: dict, id: int = None, project_name: str 
     return msg
 
 def sync_project_logic_by_platform(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     msg = sync_project_logic(type = SysEnum.platform.value, user = user, id = id)
     return msg
 
@@ -224,12 +236,12 @@ def sync_project_logic_by_git(data: GitProject):
         raise BusinessException(f"项目同步失败: {str(e)}")
 
 def sync_project_list_logic():
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     project = ProjectDao.get_user_all_projects(user)
     return project
 
 def get_project_txt_logic(id: int):
-    user = REQUEST_CONTEXT.get().user
+    user = REQUEST_CONTEXT.get().scope['user']
     project = ProjectDao.project_detail(id, user)
     path, txt_path = project_install_common(project.git_project)
     with open(txt_path, 'r', encoding='utf-8') as f:

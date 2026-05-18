@@ -80,7 +80,7 @@ class LogDao(BaseCrud):
     def run_status_summary(cls):
         """统计各运行状态数量"""
         with Session() as session:
-            run_type = case(whens=[(DataFactoryRunLog.run_status == 0, '成功'), (DataFactoryRunLog.run_status == 1, '异常')], else_='失败').label("name")
+            run_type = case((DataFactoryRunLog.run_status == 0, '成功'), (DataFactoryRunLog.run_status == 1, '异常'), else_='失败').label("name")
             run_status_sum = session.query(run_type, func.count(DataFactoryRunLog.run_status).label("value")).group_by(DataFactoryRunLog.run_status)
             return run_status_sum.all()
 
@@ -88,7 +88,7 @@ class LogDao(BaseCrud):
     def call_type_summary(cls):
         """统计各调用方式数量"""
         with Session() as session:
-            type = case(whens=[(DataFactoryRunLog.call_type == '0', '平台调用'),(DataFactoryRunLog.call_type == '1', '外链调用')], else_='RPC调用').label("name")
+            type = case((DataFactoryRunLog.call_type == '0', '平台调用'),(DataFactoryRunLog.call_type == '1', '外链调用'), else_='RPC调用').label("name")
             call_type_sum = session.query(type,
                                            func.count(DataFactoryRunLog.call_type).label("value")).group_by(
                 DataFactoryRunLog.call_type)
@@ -99,11 +99,11 @@ class LogDao(BaseCrud):
         """统计最近7天的数据"""
         with Session() as session:
             # 成功数
-            success_count =case(whens=[(DataFactoryRunLog.run_status == RunStatusEnum.success.value, 1)], else_=0)
+            success_count =case((DataFactoryRunLog.run_status == RunStatusEnum.success.value, 1), else_=0)
             # 异常数
-            exception_count =case(whens=[(DataFactoryRunLog.run_status == RunStatusEnum.exception.value, 1)], else_=0)
+            exception_count =case((DataFactoryRunLog.run_status == RunStatusEnum.exception.value, 1), else_=0)
             # 失败数
-            error_count =case(whens=[(DataFactoryRunLog.run_status == RunStatusEnum.fail.value, 1)], else_=0)
+            error_count =case((DataFactoryRunLog.run_status == RunStatusEnum.fail.value, 1), else_=0)
 
             filter_list = [DataFactoryRunLog.create_time.between(start_time.strftime("%Y-%m-%d 00:00:00"), end_time.strftime("%Y-%m-%d 23:59:59"))]
             date = func.date_format(DataFactoryRunLog.create_time, "%Y-%m-%d")

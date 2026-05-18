@@ -4,7 +4,8 @@
 # @File : project_out.py
 from app.commons.responses.response_model import BaseDto
 from datetime import datetime
-from typing import Union
+from typing import Optional
+from pydantic import Field
 
 
 class ProjectSyncDto(BaseDto):
@@ -12,7 +13,7 @@ class ProjectSyncDto(BaseDto):
     project_name: str
 
 class ProjectListDto(ProjectSyncDto):
-    description: str = None
+    description: Optional[str] = None
     owner: str
     update_time: datetime
 
@@ -24,9 +25,9 @@ class ProjectDetailDto(ProjectListDto):
     git_project: str
     git_url: str
     git_branch: str
-    git_account: str = None
-    git_password: str = None
-    rsa_pub_key: Union[str, None]
+    git_account: Optional[str] = Field(default=None)
+    git_password: Optional[str] = Field(default=None)
+    rsa_pub_key: Optional[str] = Field(default=None)
 
 
 class RoleDto(BaseDto):

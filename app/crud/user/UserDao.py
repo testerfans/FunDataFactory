@@ -50,8 +50,8 @@ class UserDao(BaseCrud):
         user_obj = cls.get_with_first(username = body.username, password = body.password)
         if user_obj is None:
             raise BusinessException("用户名或密码错误")
-        if user_obj.is_valid:
-            # is_valid == true, 说明被冻结了
+        if not user_obj.is_valid:
+            # is_valid == false, 说明被冻结了
             raise BusinessException("对不起, 你的账号已被冻结, 请联系管理员处理")
         update_map = {
             "id": user_obj.id,
@@ -87,7 +87,7 @@ class UserDao(BaseCrud):
         filter_list = [or_(DataFactoryUser.username.like(f"%{body.keyword}%"),
                            DataFactoryUser.name.like(f"%{body.keyword}%"),
                            DataFactoryUser.email.like(f"%{body.keyword}%"))]
-        user = cls.get_with_params(filter_list=filter_list, _fields = SearchUserDto, is_valid = False)
+        user = cls.get_with_params(filter_list=filter_list, _fields = SearchUserDto)
         return user
 
     @classmethod

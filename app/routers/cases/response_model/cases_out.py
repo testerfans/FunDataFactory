@@ -32,10 +32,12 @@ class CaseSearchDto(BaseDto):
 class CaseListDto(BaseDto):
     id: int
     title: str
+    name: str = None
     group_name: str
     description: str
     owner: str
     project_id: int
+    project_name: str = None
     like: bool
     like_num: int
     collection: bool

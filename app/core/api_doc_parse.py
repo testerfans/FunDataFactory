@@ -360,12 +360,12 @@ class ApiDocParse(object):
         :param delete: 删除列表
         :return:
         """
-        add_msg = '' if len(add) == 0 else f"""<p><span style="color: #67c23a;font-weight: bold">新增{len(add)}个造数场景: {'、'.join(add)}</span></p>"""
-        update_msg = '' if len(update) == 0 else f"""<p><span style="color: #e6a23c;font-weight: bold">更新{len(update)}个造数场景: {'、'.join(update)}</span></p>"""
-        delete_msg = '' if len(delete) == 0 else f"""<p><span style="color: #f56c6c;font-weight: bold">删除{len(delete)}个造数场景: {'、'.join(delete)}</span></p>"""
+        add_msg = '' if len(add) == 0 else f'新增{len(add)}个造数场景: {"、".join(add)}'
+        update_msg = '' if len(update) == 0 else f'更新{len(update)}个造数场景: {"、".join(update)}'
+        delete_msg = '' if len(delete) == 0 else f'删除{len(delete)}个造数场景: {"、".join(delete)}'
         msg_list = [add_msg, update_msg, delete_msg]
         msg_list = [i for i in msg_list if i != '']
-        return ''.join(msg_list) if msg_list else """<p><span style="color: #409eff;font-weight: bold">数据已是最新的了! 无需同步! </span></p>"""
+        return '\n'.join(msg_list) if msg_list else '数据已是最新的了! 无需同步!'
 
     @staticmethod
     def __parse_manual_time(case: dict) -> int:

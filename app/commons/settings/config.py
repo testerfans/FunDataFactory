@@ -15,20 +15,20 @@ class Config(object):
     
     # 根据环境变量选择配置
     if ENV == 'production':
-        # 生产环境配置
-        HOST = "172.16.80.125"
-        PORT = "3306"
-        PWD = "Linlong888."
-        USER = "root"
-        DBNAME = "datafactory"
+        # 生产环境配置（从环境变量读取，避免硬编码）
+        HOST = os.getenv('DB_HOST', '172.16.80.125')
+        PORT = os.getenv('DB_PORT', '3306')
+        PWD = os.getenv('DB_PASSWORD', 'Linlong888.')
+        USER = os.getenv('DB_USER', 'root')
+        DBNAME = os.getenv('DB_NAME', 'datafactory')
         PRO = True
     else:
         # 开发环境配置
-        HOST = "127.0.0.1"
-        PORT = "3306"
-        PWD = "root"
-        USER = "root"
-        DBNAME = "datafactory"
+        HOST = os.getenv('DB_HOST', '127.0.0.1')
+        PORT = os.getenv('DB_PORT', '3306')
+        PWD = os.getenv('DB_PASSWORD', '123456')
+        USER = os.getenv('DB_USER', 'root')
+        DBNAME = os.getenv('DB_NAME', 'datafactory')
         PRO = False
 
     # 数据库配置
@@ -81,6 +81,7 @@ HTTP_MSG_MAP = {
 API_WHITE_LIST = [
     '/docs',
     '/static',
+    '/uploads',
     '/favicon.ico',
     '/openapi.json',
     '/redoc',
@@ -88,11 +89,15 @@ API_WHITE_LIST = [
     '/api/user/login',
     '/api/cases/out',
     '/api/cases/rpc/',
-    '/api/project/gitSync'
+    '/api/project/gitSync',
+    '/api/system/public/settings'
 ]
 
 API_ADMIN_LIST = [
-    '/api/user/update'
+    '/api/user/update',
+    '/api/system/settings',
+    '/api/system/upload',
+    '/api/system/upload/validate'
 ]
 
 API_LEADER_LIST = [

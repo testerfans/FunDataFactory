@@ -80,7 +80,7 @@ class BaseCrud(object):
         _filter_list = cls.__filter_k_v(filter_list, **kwargs)
         if _fields:
             field_list = []
-            for field in _fields.__fields__.keys():
+            for field in _fields.model_fields.keys():
                 field_list.append(getattr(cls.model, field))
             query_obj = session.query(*field_list).filter(*_filter_list)
         else:

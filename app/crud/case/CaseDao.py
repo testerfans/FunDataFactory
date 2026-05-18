@@ -130,7 +130,11 @@ class CaseDao(BaseCrud):
         """
         filter_list = []
         project_ids = [i[0] for i in ProjectDao.get_user_all_projects(user)]
-        filter_list.append(DataFactoryCases.project_id.in_(project_ids))
+        if project_ids:
+            filter_list.append(DataFactoryCases.project_id.in_(project_ids))
+        else:
+            # 无可用项目时返回永远为 False 的条件，避免 IN () 语法错误
+            filter_list.append(DataFactoryCases.project_id == -1)
         return filter_list
 
     @classmethod
@@ -183,9 +187,9 @@ class CaseDao(BaseCrud):
             # 只取未删除的数据
             filter_list = [DataFactoryCases.del_flag == DeleteEnum.no.value]
             # 如果like_表中 del_flag字段标识为0则为已点赞=True，其余情况为未点赞=False
-            is_like = case_([(like_.del_flag == DeleteEnum.no.value, True)], else_=False).label("like")
+            is_like = case_((like_.del_flag == DeleteEnum.no.value, True), else_=False).label("like")
             # 如果collection_表中 del_flag字段标识为0则为已收藏=True，其余情况为未收藏=False
-            is_collection = case_([(collection_.del_flag == DeleteEnum.no.value, True)], else_=False).label("collection")
+            is_collection = case_((collection_.del_flag == DeleteEnum.no.value, True), else_=False).label("collection")
 
             # 子表-统计各造数场景点赞数和收藏数, 子查询(subquery)
             summary = session.query(DataFactoryCases.id.label("cases_id"),
@@ -230,18 +234,20 @@ class CaseDao(BaseCrud):
                     # 业务线分组
                     filter_list.append(DataFactoryCases.group_name == show)
 
-            # cases主表关联like表、collection表、summary表
+            # cases主表关联like表、collection表、summary表、project表
             case = session.query(like_num, collection_num, DataFactoryCases.project_id, DataFactoryCases.id,
-                                 DataFactoryCases.title, DataFactoryCases.group_name, DataFactoryCases.description,
+                                 DataFactoryCases.title, DataFactoryCases.name, DataFactoryCases.group_name, DataFactoryCases.description,
                                  DataFactoryCases.owner, is_like, is_collection, DataFactoryCases.update_time,
-                                 DataFactoryCases.manual_execution_time). \
+                                 DataFactoryCases.manual_execution_time,
+                                 DataFactoryProject.project_name). \
                 outerjoin(like_, and_(DataFactoryCases.id == like_.cases_id,
                                      like_.del_flag == 0,
                                      like_.create_id == user['id'])). \
                 outerjoin(collection_, and_(DataFactoryCases.id == collection_.cases_id,
                                            collection_.del_flag == 0,
                                            collection_.create_id == user['id'])). \
-                outerjoin(summary, DataFactoryCases.id == summary.c.cases_id)
+                outerjoin(summary, DataFactoryCases.id == summary.c.cases_id). \
+                outerjoin(DataFactoryProject, DataFactoryCases.project_id == DataFactoryProject.id)
 
             # 过滤条件
             case = case.filter(*filter_list)
@@ -523,7 +529,7 @@ class CaseParamsDao(BaseCrud):
             result = cls.get_with_existed(session = session, filter_list = filter_list)
             if result:
                 raise BusinessException("该参数组合已存在，请重新录入！")
-            cases_params = DataFactoryCasesParams(**body.dict(), out_id = out_id, user = user)
+            cases_params = DataFactoryCasesParams(**body.model_dump(), out_id = out_id, user = user)
             cls.insert_by_model(session = session, model_obj = cases_params)
 
 

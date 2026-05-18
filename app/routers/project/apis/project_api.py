@@ -61,8 +61,8 @@ def operation_project(id: int):
     return ResponseDto()
 
 def init_project(id: int):
-    project_logic.init_project_logic(id)
-    return ResponseDto(msg = "初始化成功")
+    msg = project_logic.init_project_logic(id)
+    return ResponseDto(msg = msg)
 
 
 def project_detail(id: int):

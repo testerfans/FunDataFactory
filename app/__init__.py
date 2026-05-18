@@ -22,11 +22,42 @@ from app.commons.settings.config import LOGGING_CONF
 from app.commons.settings.config import Text
 from loguru import logger
 from app.const import constants
+from starlette.staticfiles import StaticFiles
+from pathlib import Path
 
+# 确保 static 和 uploads 目录存在
+_static_dir = Path(__file__).parent.parent / "static"
+_static_dir.mkdir(exist_ok=True)
+_uploads_dir = Path(__file__).parent.parent / "uploads"
+_uploads_dir.mkdir(exist_ok=True)
 
 
 fun = FastAPI(title=Text.TITLE, version=Text.VERSION, description=Text.DESCRIPTION,
               docs_url = Text.DOC, redoc_url = Text.REDOC, openapi_url = Text.OPENAPI)
+
+# 挂载上传文件目录（用于系统设置图片上传）
+fun.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
+
+# 在应用启动前注册中间件和异常处理器（Starlette >=0.40 不允许在 lifespan 中添加）
+_middleware_list = [ AuthMiddleware, ExceptionMiddleware ]
+for _mw in _middleware_list:
+    fun.add_middleware(_mw)
+fun.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_exception_handler_list = [(StarletteHTTPException, http_exception_handler),
+                          (RequestValidationError, body_validation_exception_handler),
+                          (AuthException, auth_exception_handler),
+                          (PermissionException, role_exception_handler),
+                          (BusinessException, business_exception_handler),
+                          (Exception, global_exception_handler)]
+for _exc_name, _exc_handler in _exception_handler_list:
+    fun.add_exception_handler(_exc_name, _exc_handler)
 
 async def request_info(request: Request):
     """获取请求流量信息"""

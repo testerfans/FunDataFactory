@@ -2,15 +2,15 @@
 # @Time : 2022/7/18 23:20 
 # @Author : junjie
 # @File : constants.py
+import os
 
-
-TOKEN_KEY = "funDataFactory"  # md5 盐值 / token key
+TOKEN_KEY = os.getenv('TOKEN_KEY', 'funDataFactory')  # md5 盐值 / token key
 
 TOKEN_EXPIRED_HOUR = 12  # token过期时长
 
-AES_KEY = 'SVuRc6B7xsZnUWQO'  # AES 秘钥
+AES_KEY = os.getenv('AES_KEY', 'SVuRc6B7xsZnUWQO')  # AES 秘钥
 
-AES_IV = 'MUnDCU0aADgs4hd1'  # AES 偏移量
+AES_IV = os.getenv('AES_IV', 'MUnDCU0aADgs4hd1')  # AES 偏移量
 
 ADMIN  = {
     "username": "admin",
@@ -35,4 +35,4 @@ ERROR_MSG_TEMPLATES = {
 
 USER_AGENT = 'git-oschina-hook'
 
-SECRET = 'webhook_signature'
+SECRET = os.getenv('WEBHOOK_SECRET', 'webhook_signature')
